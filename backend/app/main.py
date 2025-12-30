@@ -5,8 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .schemas import HealthResponse
-from .routers import pumps, facilities, documentations
-from .routers import debug
+from .routers import pumps, facilities, documentations, debug, files
 
 settings = get_settings()
 
@@ -31,6 +30,7 @@ app.add_middleware(
 app.include_router(pumps.router)
 app.include_router(facilities.router)
 app.include_router(documentations.router)
+app.include_router(files.router)
 app.include_router(debug.router)
 
 

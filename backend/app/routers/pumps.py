@@ -2,10 +2,10 @@
 
 from fastapi import APIRouter, HTTPException
 from typing import Any
-from cognite.client.data_classes.data_modeling import ViewId
+from cognite.client.data_classes.data_modeling import ViewId, NodeApply, NodeOrEdgeData
 
 from ..cognite_client import get_cognite_client, get_data_model_info, get_view_id
-from ..schemas import PumpResponse, ListResponse
+from ..schemas import PumpResponse, ListResponse, PumpCreate
 
 router = APIRouter(prefix="/pumps", tags=["Pumps"])
 
@@ -104,3 +104,67 @@ async def get_pump(external_id: str) -> PumpResponse:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching pump: {str(e)}")
+
+@router.post("", response_model=PumpResponse)
+async def upsert_pump(pump: PumpCreate) -> PumpResponse:
+    """
+    Create or update a pump.
+    
+    Args:
+        pump: The pump data to create or update
+    
+    Returns:
+        The created/updated pump
+    """
+    try:
+        client = get_cognite_client()
+        view_id = get_view_id("Pump")
+        
+        properties = {
+            "name": pump.name,
+            "year": pump.year,
+            "weight": pump.weight,
+            "weightUnit": pump.weight_unit,
+        }
+        
+        # Add references if present
+        # Note: Cognite expects references as dicts with space and externalId
+        if pump.pressure:
+            properties["pressure"] = {"space": pump.pressure.space, "externalId": pump.pressure.external_id}
+        if pump.temperature:
+            properties["temperature"] = {"space": pump.temperature.space, "externalId": pump.temperature.external_id}
+        if pump.lives_in:
+            properties["livesIn"] = {"space": pump.lives_in.space, "externalId": pump.lives_in.external_id}
+            
+        # Create NodeApply object
+        node = NodeApply(
+            space=pump.space,
+            external_id=pump.external_id,
+            sources=[
+                NodeOrEdgeData(
+                    source=view_id,
+                    properties=properties
+                )
+            ]
+        )
+        
+        # Apply instance to Cognite
+        res = client.data_modeling.instances.apply(nodes=[node])
+        
+        if not res.nodes:
+             raise HTTPException(status_code=500, detail="Failed to create/update pump")
+             
+        return PumpResponse(
+            external_id=pump.external_id,
+            space=pump.space,
+            name=pump.name,
+            year=pump.year,
+            weight=pump.weight,
+            weight_unit=pump.weight_unit,
+            pressure=pump.pressure,
+            temperature=pump.temperature,
+            lives_in=pump.lives_in
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating pump: {str(e)}")

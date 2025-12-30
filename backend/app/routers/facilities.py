@@ -2,10 +2,10 @@
 
 from fastapi import APIRouter, HTTPException
 from typing import Any
-from cognite.client.data_classes.data_modeling import ViewId
+from cognite.client.data_classes.data_modeling import ViewId, NodeApply, NodeOrEdgeData
 
 from ..cognite_client import get_cognite_client, get_data_model_info, get_view_id
-from ..schemas import FacilityResponse, ListResponse
+from ..schemas import FacilityResponse, ListResponse, FacilityCreate
 
 router = APIRouter(prefix="/facilities", tags=["Facilities"])
 
@@ -26,7 +26,7 @@ def _parse_facility(item: Any, view_id: ViewId) -> dict:
     }
 
 
-import traceback
+
 
 @router.get("", response_model=ListResponse)
 async def list_facilities(limit: int = 100) -> ListResponse:
@@ -92,3 +92,50 @@ async def get_facility(external_id: str) -> FacilityResponse:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching facility: {str(e)}")
 
+
+@router.post("", response_model=FacilityResponse)
+async def upsert_facility(facility: FacilityCreate) -> FacilityResponse:
+    """
+    Create or update a facility.
+    
+    Args:
+        facility: The facility data to create or update
+    
+    Returns:
+        The created/updated facility
+    """
+    try:
+        client = get_cognite_client()
+        view_id = get_view_id("Facility")
+        
+        # Create NodeApply object
+        node = NodeApply(
+            space=facility.space,
+            external_id=facility.external_id,
+            sources=[
+                NodeOrEdgeData(
+                    source=view_id,
+                    properties={
+                        "name": facility.name,
+                        "desc": facility.desc,
+                    }
+                )
+            ]
+        )
+        
+        # Apply instance to Cognite
+        res = client.data_modeling.instances.apply(nodes=[node])
+        
+        if not res.nodes:
+             raise HTTPException(status_code=500, detail="Failed to create/update facility")
+        
+        # Return response based on input data
+        return FacilityResponse(
+            external_id=facility.external_id,
+            space=facility.space,
+            name=facility.name,
+            desc=facility.desc or ""
+        )
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating facility: {str(e)}")

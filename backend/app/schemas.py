@@ -65,6 +65,35 @@ class DocumentationResponse(BaseModel):
         from_attributes = True
 
 
+class FacilityCreate(BaseModel):
+    """Schema for creating/updating a Facility."""
+    external_id: str
+    space: str
+    name: str
+    desc: Optional[str] = None
+
+
+class PumpCreate(BaseModel):
+    """Schema for creating/updating a Pump."""
+    external_id: str
+    space: str
+    name: str
+    year: Optional[int] = None
+    weight: Optional[float] = None
+    weight_unit: Optional[str] = None
+    pressure: Optional[TimeSeriesReference] = None
+    temperature: Optional[TimeSeriesReference] = None
+    lives_in: Optional[FacilityReference] = None
+
+
+class DocumentationCreate(BaseModel):
+    """Schema for creating/updating a Documentation."""
+    external_id: str
+    space: str
+    name: Optional[str] = None
+    file: Optional[FileReference] = None
+
+
 class ListResponse(BaseModel):
     """Generic list response wrapper."""
     items: list[Any]
