@@ -3,9 +3,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .config import get_settings
-from .schemas import HealthResponse
-from .routers import pumps, facilities, documentations, debug, files
+from .core.config import get_settings
+from .api.schemas import HealthResponse
+from .api.routers import pumps, facilities, documentations, debug, files
 
 settings = get_settings()
 
